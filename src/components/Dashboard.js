@@ -36,7 +36,11 @@ function Dashboard() {
         "/incident?sysparm_limit=100&sysparm_fields=number,short_description,state,u_sla_at_risk,u_sla_acknowledged,u_sla_breach_reason,u_sla_breach_justification"
       );
 
-      setIncidents(response.data.result);
+      const data = Array.isArray(response.data?.result)
+  ? response.data.result
+  : [];
+
+setIncidents(data);
     } catch (error) {
       console.error("Error fetching incidents:", error);
       alert(
@@ -48,7 +52,15 @@ function Dashboard() {
   };
 
   useEffect(() => {
-    fetchIncidents();
+    fetchIncidents(
+      const response = await api.get(
+  "/incident?sysparm_limit=100"
+);
+
+console.log(response.data);
+
+setIncidents(response.data.result || []);
+    );
   }, []);
 
   const filteredIncidents = incidents.filter((incident) => {
