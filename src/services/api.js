@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "baseurl",
+  baseURL: process.env.baseurl,
 
   auth: {
     username: "username",
@@ -9,8 +9,8 @@ const api = axios.create({
   },
 
   headers: {
-    "Accept": "application/json",
-    "Content-Type": "application/json",
+    username: process.env.username,
+    password: process.env.password,
   },
 });
 
