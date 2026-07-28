@@ -1,11 +1,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://dev401590.service-now.com/api/now/table",
+  baseURL: "base-url",
 
   auth: {
-    username: "vrsec.student",
-    password: "Snow@2311",
+    username: "user-name",
+    password: "pass-word",
   },
 
   headers: {
