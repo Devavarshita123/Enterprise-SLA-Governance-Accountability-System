@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useState, useEffect } from "react";
 import "./Dashboard.css";
+import api from "../services/api";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+
 import { Bar, Pie } from "react-chartjs-2";
 
 ChartJS.register(
@@ -21,266 +24,259 @@ ChartJS.register(
 );
 
 function Dashboard() {
-  const [search, setSearch] = useState("");
   const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+
+  const fetchIncidents = async () => {
+    try {
+      setLoading(true);
+
+      const response = await api.get(
+        "/incident?sysparm_limit=100&sysparm_fields=number,short_description,state,u_sla_at_risk,u_sla_acknowledged,u_sla_breach_reason,u_sla_breach_justification"
+      );
+
+      setIncidents(response.data.result);
+    } catch (error) {
+      console.error("Error fetching incidents:", error);
+      alert(
+        "Unable to connect to ServiceNow.\nCheck your credentials or CORS configuration."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setIncidents([
-      {
-        number: "INC0010001",
-        short_description: "Email server is down",
-        state: "In Progress",
-        u_sla_at_risk: true,
-        u_sla_acknowledged: false,
-        u_sla_breach_reason: "Network Issue",
-        u_sla_breach_justification: "Waiting for network team",
-      },
-      {
-        number: "INC0010002",
-        short_description: "VPN connection issue",
-        state: "Resolved",
-        u_sla_at_risk: false,
-        u_sla_acknowledged: true,
-        u_sla_breach_reason: "",
-        u_sla_breach_justification: "",
-      },
-      {
-        number: "INC0010003",
-        short_description: "Laptop not booting",
-        state: "New",
-        u_sla_at_risk: true,
-        u_sla_acknowledged: true,
-        u_sla_breach_reason: "Hardware Failure",
-        u_sla_breach_justification: "Replacement requested",
-      },
-      {
-        number: "INC0010004",
-        short_description: "Printer offline",
-        state: "In Progress",
-        u_sla_at_risk: false,
-        u_sla_acknowledged: false,
-        u_sla_breach_reason: "",
-        u_sla_breach_justification: "",
-      },
-    ]);
+    fetchIncidents();
   }, []);
 
-  const filteredIncidents = useMemo(() => {
-    return incidents.filter(
-      (i) =>
-        i.number.toLowerCase().includes(search.toLowerCase()) ||
-        i.short_description.toLowerCase().includes(search.toLowerCase())
+  const filteredIncidents = incidents.filter((incident) => {
+    const number = incident.number || "";
+    const description = incident.short_description || "";
+
+    return (
+      number.toLowerCase().includes(search.toLowerCase()) ||
+      description.toLowerCase().includes(search.toLowerCase())
     );
-  }, [incidents, search]);
+  });
 
-  const total = incidents.length;
-  const atRisk = incidents.filter((i) => i.u_sla_at_risk).length;
-  const acknowledged = incidents.filter(
-    (i) => i.u_sla_acknowledged
-  ).length;
-  const pending = incidents.filter(
-    (i) => i.u_sla_at_risk && !i.u_sla_acknowledged
+  const totalIncidents = filteredIncidents.length;
+
+  const atRiskCount = filteredIncidents.filter(
+    (i) => i.u_sla_at_risk === "true" || i.u_sla_at_risk === true
   ).length;
 
-  const stateCount = {
-    New: incidents.filter((i) => i.state === "New").length,
-    "In Progress": incidents.filter(
-      (i) => i.state === "In Progress"
-    ).length,
-    Resolved: incidents.filter((i) => i.state === "Resolved").length,
-  };
+  const acknowledgedCount = filteredIncidents.filter(
+    (i) => i.u_sla_acknowledged === "true" || i.u_sla_acknowledged === true
+  ).length;
+
+  const breachedCount = filteredIncidents.filter(
+    (i) =>
+      i.u_sla_breach_reason &&
+      i.u_sla_breach_reason !== ""
+  ).length;
+
+  const newCount = filteredIncidents.filter(
+    (i) => i.state === "1"
+  ).length;
+
+  const progressCount = filteredIncidents.filter(
+    (i) => i.state === "2"
+  ).length;
+
+  const resolvedCount = filteredIncidents.filter(
+    (i) => i.state === "6"
+  ).length;
 
   const barData = {
-  labels: ["New", "In Progress", "Resolved"],
-  datasets: [
-    {
-      label: "Incidents",
-      data: [
-        stateCount.New,
-        stateCount["In Progress"],
-        stateCount.Resolved,
-      ],
-      backgroundColor: [
-        "#ef4444",
-        "#f59e0b",
-        "#22c55e",
-      ],
-      borderColor: [
-        "#dc2626",
-        "#d97706",
-        "#16a34a",
-      ],
-      borderWidth: 2,
-      borderRadius: 10,
-    },
-  ],
-};
-
-const barOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "top",
-    },
-  },
-};
-
-const pieData = {
-  labels: ["At Risk", "Safe"],
-  datasets: [
-    {
-      data: [atRisk, total - atRisk],
-      backgroundColor: [
-        "#ef4444",
-        "#22c55e",
-      ],
-      borderColor: [
-        "#ffffff",
-        "#ffffff",
-      ],
-      borderWidth: 2,
-    },
-  ],
-};
-
-const pieOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "top",
-    },
-  },
-};
-
-  const getStatusClass = (state) => {
-    if (state === "Resolved") return "status resolved";
-    if (state === "In Progress") return "status progress";
-    return "status new";
+    labels: ["New", "In Progress", "Resolved"],
+    datasets: [
+      {
+        label: "Incidents",
+        data: [newCount, progressCount, resolvedCount],
+        backgroundColor: [
+          "#36A2EB",
+          "#FFCE56",
+          "#4BC0C0",
+        ],
+        borderColor: [
+          "#36A2EB",
+          "#FFCE56",
+          "#4BC0C0",
+        ],
+        borderWidth: 1,
+      },
+    ],
   };
 
-  return (
-    <div className="container">
+  const pieData = {
+    labels: ["SLA At Risk", "SLA Safe"],
+    datasets: [
+      {
+        data: [
+          atRiskCount,
+          totalIncidents - atRiskCount,
+        ],
+        backgroundColor: [
+          "#FF6384",
+          "#4BC0C0",
+        ],
+      },
+    ],
+  };
 
+  const barOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: true,
+      },
+    },
+  };
+
+  const pieOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "bottom",
+      },
+    },
+  };
+    return (
+    <div className="dashboard-container">
       <h1>Enterprise SLA Governance Dashboard</h1>
 
-      <p className="subtitle">
-        Real-Time SLA Monitoring and Incident Analytics
-      </p>
-
-      <div className="topbar">
+      <div className="toolbar">
         <input
-          className="search"
-          placeholder="Search Incident..."
+          type="text"
+          placeholder="Search by Incident Number or Description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        <button
-          className="refresh"
-          onClick={() => window.location.reload()}
-        >
-          Refresh
+        <button onClick={fetchIncidents}>
+          Refresh Data
         </button>
       </div>
 
-      <div className="cards">
+      {loading ? (
+        <h3>Loading incidents...</h3>
+      ) : (
+        <>
+          <div className="cards">
 
-        <div className="card">
-          <h3>📄 Total Incidents</h3>
-          <h2>{total}</h2>
-        </div>
+            <div className="card">
+              <h2>{totalIncidents}</h2>
+              <p>Total Incidents</p>
+            </div>
 
-        <div className="card">
-          <h3>⚠ SLA At Risk</h3>
-          <h2>{atRisk}</h2>
-        </div>
+            <div className="card">
+              <h2>{atRiskCount}</h2>
+              <p>SLA At Risk</p>
+            </div>
 
-        <div className="card">
-          <h3>✅ Acknowledged</h3>
-          <h2>{acknowledged}</h2>
-        </div>
+            <div className="card">
+              <h2>{acknowledgedCount}</h2>
+              <p>Acknowledged</p>
+            </div>
 
-        <div className="card">
-          <h3>⏳ Pending</h3>
-          <h2>{pending}</h2>
-        </div>
+            <div className="card">
+              <h2>{breachedCount}</h2>
+              <p>SLA Breached</p>
+            </div>
 
-      </div>
+          </div>
 
-      <div className="charts">
+          <div className="charts">
 
-        <div className="chartCard">
-          <h3>Incident Status</h3>
-          <div style={{ height: "350px" }}>
-  <Bar data={barData} options={barOptions} />
-</div>
-        </div>
+            <div className="chart-box">
+              <h3>Incident Status</h3>
+              <Bar
+                data={barData}
+                options={barOptions}
+              />
+            </div>
 
-        <div className="chartCard">
-          <h3>SLA Risk Distribution</h3>
-          <div style={{ height: "350px" }}>
-  <Pie data={pieData} options={pieOptions} />
-</div>
-        </div>
+            <div className="chart-box">
+              <h3>SLA Risk</h3>
+              <Pie
+                data={pieData}
+                options={pieOptions}
+              />
+            </div>
 
-      </div>
+          </div>
 
-      <table>
+          <table className="incident-table">
+            <thead>
+              <tr>
+                <th>Incident</th>
+                <th>Description</th>
+                <th>State</th>
+                <th>At Risk</th>
+                <th>Acknowledged</th>
+                <th>Breach Reason</th>
+                <th>Justification</th>
+              </tr>
+            </thead>
 
-        <thead>
-          <tr>
-            <th>Incident</th>
-            <th>Description</th>
-            <th>State</th>
-            <th>SLA Risk</th>
-            <th>Acknowledged</th>
-            <th>Breach Reason</th>
-            <th>Justification</th>
-          </tr>
-        </thead>
+            <tbody>
 
-        <tbody>
+              {filteredIncidents.length === 0 ? (
+                <tr>
+                  <td colSpan="7">
+                    No incidents found.
+                  </td>
+                </tr>
+              ) : (
+                filteredIncidents.map((incident) => (
+                  <tr key={incident.sys_id || incident.number}>
 
-          {filteredIncidents.map((incident) => (
+                    <td>{incident.number}</td>
 
-            <tr key={incident.number}>
+                    <td>{incident.short_description}</td>
 
-              <td>{incident.number}</td>
+                    <td>
+                      {incident.state === "1"
+                        ? "New"
+                        : incident.state === "2"
+                        ? "In Progress"
+                        : incident.state === "6"
+                        ? "Resolved"
+                        : incident.state}
+                    </td>
 
-              <td>{incident.short_description}</td>
+                    <td>
+                      {incident.u_sla_at_risk === true ||
+                      incident.u_sla_at_risk === "true"
+                        ? "Yes"
+                        : "No"}
+                    </td>
 
-              <td>
-                <span className={getStatusClass(incident.state)}>
-                  {incident.state}
-                </span>
-              </td>
+                    <td>
+                      {incident.u_sla_acknowledged === true ||
+                      incident.u_sla_acknowledged === "true"
+                        ? "Yes"
+                        : "No"}
+                    </td>
 
-              <td>
-                {incident.u_sla_at_risk ? "🔴 At Risk" : "🟢 Safe"}
-              </td>
+                    <td>
+                      {incident.u_sla_breach_reason || "-"}
+                    </td>
 
-              <td>
-                {incident.u_sla_acknowledged ? "Yes" : "No"}
-              </td>
+                    <td>
+                      {incident.u_sla_breach_justification || "-"}
+                    </td>
 
-              <td>
-                {incident.u_sla_breach_reason || "-"}
-              </td>
+                  </tr>
+                ))
+              )}
 
-              <td>
-                {incident.u_sla_breach_justification || "-"}
-              </td>
-
-            </tr>
-
-          ))}
-
-        </tbody>
-
-      </table>
-
+            </tbody>
+          </table>
+        </>
+      )}
     </div>
   );
 }
