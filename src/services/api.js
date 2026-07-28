@@ -1,11 +1,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.baseurl,
+  baseURL: process.env.REACT_APP_BASEURL,
 
   auth: {
-    username: process.env.username,
-    password: process.env.password,
+    username: process.env.REACT_APP_USERNAME,
+    password: process.env.REACT_APP_PASSWORD,
   },
 
   headers: {
