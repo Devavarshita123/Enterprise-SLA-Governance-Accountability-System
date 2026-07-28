@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import "./Dashboard.css";
+import api from "../services/api";
 import {
   Chart as ChartJS,
   CategoryScale,
