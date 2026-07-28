@@ -4,13 +4,13 @@ const api = axios.create({
   baseURL: process.env.baseurl,
 
   auth: {
-    username: "username",
-    password: "password",
+    username: process.env.username,
+    password: process.env.password,
   },
 
   headers: {
-    username: process.env.username,
-    password: process.env.password,
+    Accept: "application/json",
+    "Content-Type": "application/json",
   },
 });
 
