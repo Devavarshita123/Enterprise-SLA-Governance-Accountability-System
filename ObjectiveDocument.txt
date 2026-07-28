@@ -1,0 +1,9 @@
+Business Objectives
+1. Reduce SLA breaches.
+2. Notify assignees before SLA violation.
+3. Enforce mandatory breach justification.
+4. Improve accountability using acknowledgement.
+5. Provide dashboard for managers.
+6. Maintain audit-ready SLA history.
+7. Enable conversational SLA governance using Virtual Agent.
+8. Allow external applications to monitor SLA through REST APIs.
