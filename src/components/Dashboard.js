@@ -22,8 +22,9 @@ ChartJS.register(
 );
 
 function Dashboard() {
-  const [search, setSearch] = useState("");
   const [incidents, setIncidents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
   fetchIncidents();
