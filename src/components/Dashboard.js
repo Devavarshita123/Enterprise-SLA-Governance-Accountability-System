@@ -25,45 +25,31 @@ function Dashboard() {
   const [incidents, setIncidents] = useState([]);
 
   useEffect(() => {
-    setIncidents([
-      {
-        number: "INC0010001",
-        short_description: "Email server is down",
-        state: "In Progress",
-        u_sla_at_risk: true,
-        u_sla_acknowledged: false,
-        u_sla_breach_reason: "Network Issue",
-        u_sla_breach_justification: "Waiting for network team",
-      },
-      {
-        number: "INC0010002",
-        short_description: "VPN connection issue",
-        state: "Resolved",
-        u_sla_at_risk: false,
-        u_sla_acknowledged: true,
-        u_sla_breach_reason: "",
-        u_sla_breach_justification: "",
-      },
-      {
-        number: "INC0010003",
-        short_description: "Laptop not booting",
-        state: "New",
-        u_sla_at_risk: true,
-        u_sla_acknowledged: true,
-        u_sla_breach_reason: "Hardware Failure",
-        u_sla_breach_justification: "Replacement requested",
-      },
-      {
-        number: "INC0010004",
-        short_description: "Printer offline",
-        state: "In Progress",
-        u_sla_at_risk: false,
-        u_sla_acknowledged: false,
-        u_sla_breach_reason: "",
-        u_sla_breach_justification: "",
-      },
-    ]);
-  }, []);
+  fetchIncidents();
+}, []);
+
+const fetchIncidents = async () => {
+  try {
+    setLoading(true);
+
+    const response = await api.get(
+      "/incident?sysparm_limit=100&sysparm_fields=number,short_description,state,u_sla_at_risk,u_sla_acknowledged,u_sla_breach_reason,u_sla_breach_justification"
+    );
+
+    console.log(response.data);
+
+    const data = Array.isArray(response.data?.result)
+      ? response.data.result
+      : [];
+
+    setIncidents(data);
+  } catch (error) {
+    console.error("Error:", error);
+    setIncidents([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const filteredIncidents = useMemo(() => {
     return incidents.filter(
