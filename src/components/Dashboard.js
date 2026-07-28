@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import "./Dashboard.css";
 import api from "../services/api";
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from "chart.js";
+
 import { Bar, Pie } from "react-chartjs-2";
 
 ChartJS.register(
@@ -26,121 +28,159 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
+  const fetchIncidents = async () => {
+    try {
+      setLoading(true);
+
+      const response = await api.get(
+        "/incident?sysparm_limit=100&sysparm_fields=number,short_description,state,u_sla_at_risk,u_sla_acknowledged,u_sla_breach_reason,u_sla_breach_justification"
+      );
+
+      console.log(response.data);
+
+      const data = Array.isArray(response.data?.result)
+        ? response.data.result
+        : [];
+
+      const formattedData = data.map((item) => ({
+        ...item,
+        state:
+          item.state === "1"
+            ? "New"
+            : item.state === "2"
+            ? "In Progress"
+            : item.state === "6"
+            ? "Resolved"
+            : item.state,
+
+        u_sla_at_risk:
+          item.u_sla_at_risk === true ||
+          item.u_sla_at_risk === "true",
+
+        u_sla_acknowledged:
+          item.u_sla_acknowledged === true ||
+          item.u_sla_acknowledged === "true",
+      }));
+
+      setIncidents(formattedData);
+    } catch (error) {
+      console.error("Error fetching incidents:", error);
+      setIncidents([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-  fetchIncidents();
-}, []);
-
-const fetchIncidents = async () => {
-  try {
-    setLoading(true);
-
-    const response = await api.get(
-      "/incident?sysparm_limit=100&sysparm_fields=number,short_description,state,u_sla_at_risk,u_sla_acknowledged,u_sla_breach_reason,u_sla_breach_justification"
-    );
-
-    console.log(response.data);
-
-    const data = Array.isArray(response.data?.result)
-      ? response.data.result
-      : [];
-
-    setIncidents(data);
-  } catch (error) {
-    console.error("Error:", error);
-    setIncidents([]);
-  } finally {
-    setLoading(false);
-  }
-};
+    fetchIncidents();
+  }, []);
 
   const filteredIncidents = useMemo(() => {
-    return incidents.filter(
-      (i) =>
-        i.number.toLowerCase().includes(search.toLowerCase()) ||
-        i.short_description.toLowerCase().includes(search.toLowerCase())
-    );
+    return incidents.filter((i) => {
+      const number = i.number || "";
+      const description = i.short_description || "";
+
+      return (
+        number.toLowerCase().includes(search.toLowerCase()) ||
+        description.toLowerCase().includes(search.toLowerCase())
+      );
+    });
   }, [incidents, search]);
 
   const total = incidents.length;
-  const atRisk = incidents.filter((i) => i.u_sla_at_risk).length;
+
+  const atRisk = incidents.filter(
+    (i) => i.u_sla_at_risk
+  ).length;
+
   const acknowledged = incidents.filter(
     (i) => i.u_sla_acknowledged
   ).length;
+
   const pending = incidents.filter(
     (i) => i.u_sla_at_risk && !i.u_sla_acknowledged
   ).length;
 
   const stateCount = {
-    New: incidents.filter((i) => i.state === "New").length,
+    New: incidents.filter(
+      (i) => i.state === "New"
+    ).length,
+
     "In Progress": incidents.filter(
       (i) => i.state === "In Progress"
     ).length,
-    Resolved: incidents.filter((i) => i.state === "Resolved").length,
+
+    Resolved: incidents.filter(
+      (i) => i.state === "Resolved"
+    ).length,
   };
 
   const barData = {
-  labels: ["New", "In Progress", "Resolved"],
-  datasets: [
-    {
-      label: "Incidents",
-      data: [
-        stateCount.New,
-        stateCount["In Progress"],
-        stateCount.Resolved,
-      ],
-      backgroundColor: [
-        "#ef4444",
-        "#f59e0b",
-        "#22c55e",
-      ],
-      borderColor: [
-        "#dc2626",
-        "#d97706",
-        "#16a34a",
-      ],
-      borderWidth: 2,
-      borderRadius: 10,
-    },
-  ],
-};
+    labels: ["New", "In Progress", "Resolved"],
+    datasets: [
+      {
+        label: "Incidents",
+        data: [
+          stateCount.New,
+          stateCount["In Progress"],
+          stateCount.Resolved,
+        ],
+        backgroundColor: [
+          "#3B82F6",
+          "#F59E0B",
+          "#10B981",
+        ],
+        borderColor: [
+          "#2563EB",
+          "#D97706",
+          "#059669",
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+      },
+    ],
+  };
 
-const barOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "top",
-    },
-  },
-};
+  const pieData = {
+    labels: ["SLA At Risk", "SLA Safe"],
+    datasets: [
+      {
+        data: [
+          atRisk,
+          total - atRisk,
+        ],
+        backgroundColor: [
+          "#EF4444",
+          "#22C55E",
+        ],
+        borderColor: [
+          "#ffffff",
+          "#ffffff",
+        ],
+        borderWidth: 2,
+      },
+    ],
+  };
 
-const pieData = {
-  labels: ["At Risk", "Safe"],
-  datasets: [
-    {
-      data: [atRisk, total - atRisk],
-      backgroundColor: [
-        "#ef4444",
-        "#22c55e",
-      ],
-      borderColor: [
-        "#ffffff",
-        "#ffffff",
-      ],
-      borderWidth: 2,
+  const barOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+      },
     },
-  ],
-};
+  };
 
-const pieOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      position: "top",
+  const pieOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: "top",
+      },
     },
-  },
-};
+  };
 
   const getStatusClass = (state) => {
     if (state === "Resolved") return "status resolved";
@@ -160,114 +200,157 @@ const pieOptions = {
       <div className="topbar">
         <input
           className="search"
-          placeholder="Search Incident..."
+          type="text"
+          placeholder="Search by Incident Number or Description..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         <button
           className="refresh"
-          onClick={() => window.location.reload()}
+          onClick={fetchIncidents}
         >
-          Refresh
+          Refresh Data
         </button>
       </div>
 
-      <div className="cards">
+      {loading ? (
+        <h2 style={{ textAlign: "center", marginTop: "40px" }}>
+          Loading incidents...
+        </h2>
+      ) : (
+        <>
+          <div className="cards">
 
-        <div className="card">
-          <h3>📄 Total Incidents</h3>
-          <h2>{total}</h2>
-        </div>
+            <div className="card">
+              <h3>📄 Total Incidents</h3>
+              <h2>{total}</h2>
+            </div>
 
-        <div className="card">
-          <h3>⚠ SLA At Risk</h3>
-          <h2>{atRisk}</h2>
-        </div>
+            <div className="card">
+              <h3>⚠ SLA At Risk</h3>
+              <h2>{atRisk}</h2>
+            </div>
 
-        <div className="card">
-          <h3>✅ Acknowledged</h3>
-          <h2>{acknowledged}</h2>
-        </div>
+            <div className="card">
+              <h3>✅ Acknowledged</h3>
+              <h2>{acknowledged}</h2>
+            </div>
 
-        <div className="card">
-          <h3>⏳ Pending</h3>
-          <h2>{pending}</h2>
-        </div>
+            <div className="card">
+              <h3>⏳ Pending</h3>
+              <h2>{pending}</h2>
+            </div>
 
-      </div>
+          </div>
 
-      <div className="charts">
+          <div className="charts">
 
-        <div className="chartCard">
-          <h3>Incident Status</h3>
-          <div style={{ height: "350px" }}>
-  <Bar data={barData} options={barOptions} />
-</div>
-        </div>
+            <div className="chartCard">
+              <h3>Incident Status</h3>
 
-        <div className="chartCard">
-          <h3>SLA Risk Distribution</h3>
-          <div style={{ height: "350px" }}>
-  <Pie data={pieData} options={pieOptions} />
-</div>
-        </div>
+              <div style={{ height: "350px" }}>
+                <Bar
+                  data={barData}
+                  options={barOptions}
+                />
+              </div>
 
-      </div>
+            </div>
 
-      <table>
+            <div className="chartCard">
 
-        <thead>
-          <tr>
-            <th>Incident</th>
-            <th>Description</th>
-            <th>State</th>
-            <th>SLA Risk</th>
-            <th>Acknowledged</th>
-            <th>Breach Reason</th>
-            <th>Justification</th>
-          </tr>
-        </thead>
+              <h3>SLA Risk Distribution</h3>
 
-        <tbody>
+              <div style={{ height: "350px" }}>
+                <Pie
+                  data={pieData}
+                  options={pieOptions}
+                />
+              </div>
 
-          {filteredIncidents.map((incident) => (
+            </div>
 
-            <tr key={incident.number}>
+          </div>
 
-              <td>{incident.number}</td>
+          <table>
 
-              <td>{incident.short_description}</td>
+            <thead>
+              <tr>
+                <th>Incident</th>
+                <th>Description</th>
+                <th>State</th>
+                <th>SLA Risk</th>
+                <th>Acknowledged</th>
+                <th>Breach Reason</th>
+                <th>Justification</th>
+              </tr>
+            </thead>
 
-              <td>
-                <span className={getStatusClass(incident.state)}>
-                  {incident.state}
-                </span>
-              </td>
+            <tbody>
 
-              <td>
-                {incident.u_sla_at_risk ? "🔴 At Risk" : "🟢 Safe"}
-              </td>
+              {filteredIncidents.length === 0 ? (
 
-              <td>
-                {incident.u_sla_acknowledged ? "Yes" : "No"}
-              </td>
+                <tr>
+                  <td
+                    colSpan="7"
+                    style={{
+                      textAlign: "center",
+                      padding: "20px",
+                    }}
+                  >
+                    No incidents found.
+                  </td>
+                </tr>
 
-              <td>
-                {incident.u_sla_breach_reason || "-"}
-              </td>
+              ) : (
 
-              <td>
-                {incident.u_sla_breach_justification || "-"}
-              </td>
+                filteredIncidents.map((incident) => (
 
-            </tr>
+                  <tr key={incident.sys_id || incident.number}>
 
-          ))}
+                    <td>{incident.number}</td>
 
-        </tbody>
+                    <td>{incident.short_description}</td>
 
-      </table>
+                    <td>
+                      <span className={getStatusClass(incident.state)}>
+                        {incident.state}
+                      </span>
+                    </td>
+
+                    <td>
+                      {incident.u_sla_at_risk
+                        ? "🔴 At Risk"
+                        : "🟢 Safe"}
+                    </td>
+
+                    <td>
+                      {incident.u_sla_acknowledged
+                        ? "Yes"
+                        : "No"}
+                    </td>
+
+                    <td>
+                      {incident.u_sla_breach_reason || "-"}
+                    </td>
+
+                    <td>
+                      {incident.u_sla_breach_justification || "-"}
+                    </td>
+
+                  </tr>
+
+                ))
+
+              )}
+
+            </tbody>
+
+          </table>
+
+        </>
+      )}
 
     </div>
   );
