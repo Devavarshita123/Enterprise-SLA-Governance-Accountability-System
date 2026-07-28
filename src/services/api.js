@@ -1,11 +1,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "base-url",
+  baseURL: "baseurl",
 
   auth: {
-    username: "user-name",
-    password: "pass-word",
+    username: "username",
+    password: "password",
   },
 
   headers: {
